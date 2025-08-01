@@ -127,17 +127,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HWND hButton;
+    static TouchpadReader* touchpadReader;
+
     switch (message)
     {
     case WM_CREATE:
         {
             // Handle touch input
-            if (RegisterTouchWindow(hWnd, 0)) {
-                // Touch input registered successfully
-            }
-            else {
-                MessageBox(hWnd, L"Failed to register touch window.", L"Error", MB_OK | MB_ICONERROR);
-            }
+            touchpadReader = new TouchpadReader(hWnd);
+            //if (RegisterTouchWindow(hWnd, 0)) {
+            //    // Touch input registered successfully
+            //}
+            //else {
+            //    MessageBox(hWnd, L"Failed to register touch window.", L"Error", MB_OK | MB_ICONERROR);
+            //}
 
             hButton = CreateWindow(L"BUTTON", L"Touch Me", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 10, 100, 30, hWnd, (HMENU)1, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
 
@@ -153,6 +156,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 MessageBox(hWnd, L"Failed to initialize touch injection.", L"Error", MB_OK | MB_ICONERROR);
 			}
 
+        }
+		break;
+    case WM_INPUT:
+        {
+            HRAWINPUT hRawInput = (HRAWINPUT)lParam;
+            if (touchpadReader) {
+                TOUCHPAD_DATA data = touchpadReader->ProcessInput(hRawInput);
+
+                for (int i = 0; i < data.touchCount; i++) {
+
+                }
+                // Processed touch input
+            }
+            else {
+                OutputDebugString(L"Failed to process touch input.\n");
+            }
         }
 		break;
     case WM_COMMAND:

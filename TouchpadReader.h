@@ -5,49 +5,63 @@
 #include <hidsdi.h>
 #pragma comment(lib, "hid.lib")
 
-struct POSITION_PARTS {
+struct RAW_POSITION_PARTS {
     BYTE low;
     BYTE high;
 };
 
-struct TOUCH_POSITION {
+struct RAW_TOUCH_POSITION {
     BYTE index;
-    POSITION_PARTS x, y;
+    RAW_POSITION_PARTS x, y;
 };
 
-struct TOUCH_SIZE {
+struct RAW_TOUCH_SIZE {
     BYTE size;
     BYTE dimensions;
 };
 
-struct TOUCHPAD_SIZE {
-	UINT width;
-	UINT height;
-};
-
-struct TOUCHPAD_EVENT {
+struct RAW_TOUCHPAD_EVENT {
     BYTE unk1;
     BYTE fingers;
     WORD time;
 
-    TOUCH_POSITION positions[5];
-    TOUCH_SIZE sizes[5];
+    RAW_TOUCH_POSITION positions[5];
+    RAW_TOUCH_SIZE sizes[5];
+};
+
+struct DIMENSIONS {
+    UINT width;
+    UINT height;
 };
 
 struct TOUCH {
-    RECT rect;
+    POINT position;
+    DIMENSIONS dimensions;
     BYTE size;
+};
+
+struct TOUCHPAD_DATA {
+    TOUCH touches[5];
+    BYTE touchCount;
+    DIMENSIONS touchpadSize;
 };
 
 class TouchpadReader
 {
 public:
-    bool GetPreparsedData(HANDLE hDevice, PHIDP_PREPARSED_DATA& pPreparsedData);
-    bool ProcessInput(HRAWINPUT rawInput);
-    bool IsTouchpadDevice(HANDLE hDevice);
+	TouchpadReader() = default;
+    TouchpadReader(HWND hWnd);
+    ~TouchpadReader();
+	bool RegisterWindow(HWND hWnd);
+    PHIDP_PREPARSED_DATA GetPreparsedData(HANDLE hDevice);
+    HIDP_CAPS GetDeviceCapabilities(HANDLE hDevice);
+    HIDP_CAPS GetDeviceCapabilities(HANDLE hDevice, PHIDP_PREPARSED_DATA pPreparsedData);
+    PHIDP_VALUE_CAPS GetDeviceCapabilityValues(HIDP_CAPS caps, PHIDP_PREPARSED_DATA pPreparsedData);
+    bool GetTouchpadDimensions(HANDLE hDevice, DIMENSIONS& size);
+    BOOL IsTouchpadDevice(HANDLE hDevice);
+    BOOL IsTouchpadDevice(HANDLE hDevice, PHIDP_PREPARSED_DATA pPreparsedData);
+    TOUCHPAD_DATA ProcessInput(HRAWINPUT hRawInput);
 private:
-    TOUCH touches[5];
-    BYTE touchCount = 0;
-    POINT touchpadSize;
+    TOUCHPAD_DATA touchpadData;
 };
 
