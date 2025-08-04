@@ -17,9 +17,14 @@ class TouchEmulator
 {
 public:
 
+	//void UpdateScreenDimensions();
+
     TouchEmulator() {
         InitializeTouchInjection(1, TOUCH_FEEDBACK_DEFAULT);
+		UpdateScreenDimensions();
     }
+
+    
 
     void SendTouchInput(int x, int y, int id, bool isDown) {
         POINTER_TOUCH_INFO contact;
@@ -48,8 +53,27 @@ public:
         InjectTouchInput(1, &contact);
     }
 
-    void SendTouchInputs(TOUCH_EVENT* touches, UINT touchCount) {
+    void GetScreenResolution(UINT& width, UINT& height) {
+    /*    RECT desktopRect;
+        GetClientRect(GetDesktopWindow(), &desktopRect);
+        width = desktopRect.right - desktopRect.left;
+        height = desktopRect.bottom - desktopRect.top;
+	*/
+    
+        width = GetSystemMetrics(SM_CXSCREEN);
+        height = GetSystemMetrics(SM_CYSCREEN);
+    }
 
+
+    void UpdateScreenDimensions() {
+        GetScreenResolution(screenDimensions.width, screenDimensions.height);
+    }
+
+    void SendTouchInputs(TOUCHPAD_EVENT touchpadEvent) {
+
+		INT touchCount = touchpadEvent.touchCount;
+        TOUCH_EVENT* touches = touchpadEvent.touches;
+        
 		if (touchCount > maxTouches) touchCount = maxTouches;
 
         POINTER_TOUCH_INFO contacts[maxTouches] = { 0 };
@@ -64,6 +88,12 @@ public:
 
             TOUCH_EVENT event = touches[i];
             TOUCH touch = event.touch;
+
+            FLOAT normalizedX = touch.position.x / (FLOAT)touchpadEvent.touchpadSize.width;
+            FLOAT normalizedY = touch.position.y / (FLOAT)touchpadEvent.touchpadSize.height;
+
+			FLOAT screenX = normalizedX * screenDimensions.width;
+			FLOAT screenY = normalizedY * screenDimensions.height;
 
             POINTER_FLAGS pointerFlags;
 
@@ -98,8 +128,8 @@ public:
 
             contacts[i].pointerInfo.pointerType = PT_TOUCH;
             contacts[i].pointerInfo.pointerId = touch.id;
-            contacts[i].pointerInfo.ptPixelLocation.x = touch.position.x;
-            contacts[i].pointerInfo.ptPixelLocation.y = touch.position.y;
+            contacts[i].pointerInfo.ptPixelLocation.x = screenX;
+            contacts[i].pointerInfo.ptPixelLocation.y = screenY;
             contacts[i].pointerInfo.pointerFlags = pointerFlags;
 
             contacts[i].touchFlags = TOUCH_FLAG_NONE;
@@ -120,10 +150,20 @@ public:
         InjectTouchInput(touchCount, contacts);
     }
 
+    void SendPenInput() {
+
+		INPUT input = { 0 };
+		input.type = PT_PEN;
+		input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+		SendInput(1, &g_penActive, sizeof(g_penActive));
+    }
+
 private:
     static const int maxTouches = 5;
 
     BOOL activeTouches[maxTouches];
+
+	DIMENSIONS screenDimensions;
 
     bool g_penActive = false;
 };

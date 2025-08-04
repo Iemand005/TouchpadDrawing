@@ -3,6 +3,8 @@
 TouchpadReader::TouchpadReader(HWND hWnd){
 	RegisterWindow(hWnd);
     RegisterRawInputDevice(hWnd);
+
+    //DIMENSIONS touchpadDimensions = GetTouchpadDimensions()
 }
 
 TouchpadReader::~TouchpadReader()
@@ -18,18 +20,31 @@ bool TouchpadReader::RegisterRawInputDevice(HWND hWnd) {
 
     SetProp(hWnd, L"MicrosoftTabletPenServiceProperty", (HANDLE)0x00000001);
 
-    RAWINPUTDEVICE rid[1];
+    RAWINPUTDEVICE rid;
 
-    rid[0].usUsagePage = 0x0D;  // Digitizer
-    rid[0].usUsage = 0x05;      // Touchpad
-    rid[0].dwFlags = RIDEV_INPUTSINK;
-    rid[0].hwndTarget = hWnd;
+    rid.usUsagePage = 0x0D;  // Digitizer
+    rid.usUsage = 0x05;      // Touchpad
+    rid.dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY;
+    rid.hwndTarget = hWnd;
 
-    if (!RegisterRawInputDevices(rid, 1, sizeof(RAWINPUTDEVICE)))
+    if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
     {
         // Error handling
         OutputDebugString(L"Failed to register for raw input\n");
     }
+
+    rid.usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+    rid.usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+    rid.dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY;  // Prevents WM_MOUSEMOVE
+    rid.hwndTarget = hWnd;
+
+    RegisterRawInputDevices(&rid, 1, sizeof(rid));
+    /*else {
+
+        RAWINPUTDEVICELIST inputDevice;
+        INT 
+        GetRawInputDeviceList(&inputDevice, &deviceCount, sizeof(RAWINPUTDEVICELIST));
+    }*/
 
     if (GetRawInputDeviceList(NULL, &deviceCount, sizeof(RAWINPUTDEVICELIST)) != -1) {
 
@@ -190,9 +205,10 @@ TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
     if (GetRawInputData(hRawInput, RID_INPUT, buffer, &size, sizeof(RAWINPUTHEADER)) == size)
     {
         RAWINPUT* raw = (RAWINPUT*)buffer;
-
+        
         if (raw->header.dwType == RIM_TYPEHID)
         {
+            touchpadData.touchpadSize = GetTouchpadDimensions(raw->header.hDevice);
             if (IsTouchpadDevice(raw->header.hDevice))
             {
                 RAW_TOUCHPAD_EVENT* touch = (RAW_TOUCHPAD_EVENT*)(raw->data.hid.bRawData);

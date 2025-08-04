@@ -39,12 +39,6 @@ struct TOUCHPAD_DATA {
     DIMENSIONS touchpadSize;
 };
 
-struct TOUCHPAD_EVENT {
-	TOUCH_EVENT touches[5];
-    BYTE touchCount;
-    DIMENSIONS touchpadSize;
-};;
-
 class TouchpadReader
 {
 public:

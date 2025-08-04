@@ -166,19 +166,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (touchpadReader) {
                 TOUCHPAD_EVENT data = touchpadReader->ProcessInput(hRawInput);
 
-				touchEmulator->SendTouchInputs(data.touches, data.touchCount);
+				touchEmulator->SendTouchInputs(data);
 
-                /*for (int i = 0; i < data.touchCount; i++) {
-                    TOUCH touch = data.touches[i];
-
-                    touchEmulator->SendTouchInput(touch.position.x, touch.position.y, i, true);
-                }*/
-                // Processed touch input
             }
             else {
                 OutputDebugString(L"Failed to process touch input.\n");
             }
         }
+        return 0;
 		break;
     case WM_COMMAND:
         {
@@ -188,18 +183,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
             case 1: // Button click
                 {
-                    POINT pt;
 
-                    pt.x = 0;
-                    pt.y = 0;
-
-                    /*GetCursorPos(&pt);
-                    
-                    ScreenToClient(hWnd, &pt);
-                    */
-                    
-                    sendTouchInput(pt.x, pt.y, true); // Simulate touch down
-                    sendTouchInput(pt.x, pt.y, false); // Simulate touch up
 			}
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -247,37 +231,4 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
-}
-
-void sendTouchInput(int x, int y, bool isDown) {
-    POINTER_TOUCH_INFO contact;
-    memset(&contact, 0, sizeof(POINTER_TOUCH_INFO));
-
-    // Set basic info
-    contact.pointerInfo.pointerType = PT_TOUCH;
-    contact.pointerInfo.pointerId = 0;  // Contact ID
-    contact.pointerInfo.ptPixelLocation.x = x;
-    contact.pointerInfo.ptPixelLocation.y = y;
-
-    if (isDown) {
-        contact.pointerInfo.pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT | POINTER_FLAG_DOWN;
-    }
-    else {
-        contact.pointerInfo.pointerFlags = POINTER_FLAG_UP;
-    }
-
-    // Set touch info
-    contact.touchFlags = TOUCH_FLAG_NONE;
-    contact.touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION;
-    contact.orientation = 90; // Orientation in degrees
-    contact.rcContact.left = x - 2;
-    contact.rcContact.top = y - 2;
-    contact.rcContact.right = x + 2;
-    contact.rcContact.bottom = y + 2;
-
-    // Initialize touch injection
-    InitializeTouchInjection(1, TOUCH_FEEDBACK_DEFAULT);
-
-    // Inject the touch input
-    InjectTouchInput(1, &contact);
 }
