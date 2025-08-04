@@ -2,6 +2,7 @@
 
 TouchpadReader::TouchpadReader(HWND hWnd){
 	RegisterWindow(hWnd);
+    RegisterRawInputDevice(hWnd);
 }
 
 TouchpadReader::~TouchpadReader()
@@ -9,16 +10,94 @@ TouchpadReader::~TouchpadReader()
 }
 
 bool TouchpadReader::RegisterWindow(HWND hWnd) {
-    return RegisterTouchWindow(hWnd, 0);
+    return RegisterTouchWindow(hWnd, TWF_FINETOUCH | TWF_WANTPALM);
+}
+
+bool TouchpadReader::RegisterRawInputDevice(HWND hWnd) {
+    UINT deviceCount = 0;
+
+    SetProp(hWnd, L"MicrosoftTabletPenServiceProperty", (HANDLE)0x00000001);
+
+    RAWINPUTDEVICE rid[1];
+
+    rid[0].usUsagePage = 0x0D;  // Digitizer
+    rid[0].usUsage = 0x05;      // Touchpad
+    rid[0].dwFlags = RIDEV_INPUTSINK;
+    rid[0].hwndTarget = hWnd;
+
+    if (!RegisterRawInputDevices(rid, 1, sizeof(RAWINPUTDEVICE)))
+    {
+        // Error handling
+        OutputDebugString(L"Failed to register for raw input\n");
+    }
+
+    if (GetRawInputDeviceList(NULL, &deviceCount, sizeof(RAWINPUTDEVICELIST)) != -1) {
+
+        PRAWINPUTDEVICELIST inputDeviceList = (PRAWINPUTDEVICELIST)malloc(sizeof(RAWINPUTDEVICELIST) * deviceCount);
+        if (GetRawInputDeviceList(inputDeviceList, &deviceCount, sizeof(RAWINPUTDEVICELIST))) {
+
+            PRAWINPUTDEVICE rawInputDevices = (PRAWINPUTDEVICE)malloc(sizeof(RAWINPUTDEVICE) * deviceCount);
+
+            for (UINT i = 0; i < deviceCount; i++)
+            {
+                RAWINPUTDEVICELIST inputDevice = inputDeviceList[i];
+                HANDLE hDevice = inputDevice.hDevice;
+                DWORD deviceType = inputDevice.dwType;
+
+
+                UINT deviceInfoSize;
+                GetRawInputDeviceInfo(hDevice, RIDI_DEVICEINFO, NULL, &deviceInfoSize);
+
+                RID_DEVICE_INFO deviceInfo;
+                deviceInfo.cbSize = sizeof(RID_DEVICE_INFO);
+
+                GetRawInputDeviceInfo(hDevice, RIDI_DEVICEINFO, &deviceInfo, &deviceInfoSize);
+
+                if (deviceInfo.hid.usUsagePage == 0x0D && deviceInfo.hid.usUsage == 0x05) // Touchpad
+                {
+                    OutputDebugString(L"AKAKAK");
+
+                    int width, height;
+                    DIMENSIONS dimensions = GetTouchpadDimensions(hDevice);
+
+                    touchpadData.touchpadSize = dimensions;
+                }
+
+                switch (inputDevice.dwType)
+                {
+                case RIM_TYPEMOUSE:    OutputDebugString(L"Mouse\n"); break;
+                case RIM_TYPEKEYBOARD: OutputDebugString(L"Keyboard\n"); break;
+                case RIM_TYPEHID:
+                    OutputDebugString(L"HID\n");
+                    break;
+                default:               OutputDebugString(L"Unknown (%d)\n"); break;
+                }
+
+                RAWINPUTDEVICE rawInputDevice;
+                rawInputDevice.usUsagePage = deviceInfo.hid.usUsagePage;
+                rawInputDevice.usUsage = deviceInfo.hid.usUsage;
+                rawInputDevice.dwFlags = RIDEV_INPUTSINK;
+                rawInputDevice.hwndTarget = hWnd;
+
+                if (RegisterRawInputDevices(&rawInputDevice, 1, sizeof(RAWINPUTDEVICE))) {
+                    return true;
+                    OutputDebugString(L"Failed to register raw input devices\n");
+                }
+
+            }
+        }
+        else free(inputDeviceList);
+        
+    }
+    return false;
 }
 
 PHIDP_PREPARSED_DATA TouchpadReader::GetPreparsedData(HANDLE hDevice) {
     UINT preparsedSize = 0;
     if (GetRawInputDeviceInfo(hDevice, RIDI_PREPARSEDDATA, NULL, &preparsedSize) == 0) {
         PHIDP_PREPARSED_DATA pPreparsedData = (PHIDP_PREPARSED_DATA)malloc(preparsedSize);
-        if (!pPreparsedData)
-            return false;
-        if (GetRawInputDeviceInfo(hDevice, RIDI_PREPARSEDDATA, pPreparsedData, &preparsedSize) != 0)
+
+        if (pPreparsedData && GetRawInputDeviceInfo(hDevice, RIDI_PREPARSEDDATA, pPreparsedData, &preparsedSize) != 0)
             return pPreparsedData;
         
         free(pPreparsedData);
@@ -46,8 +125,7 @@ PHIDP_VALUE_CAPS TouchpadReader::GetDeviceCapabilityValues(HIDP_CAPS caps, PHIDP
     if (pValueCaps && HidP_GetValueCaps(HidP_Input, pValueCaps, &valueCapsLength, pPreparsedData) == HIDP_STATUS_SUCCESS)
         return pValueCaps;
     
-    free(pValueCaps);
-    return false;
+    return {};
 }
 
 
@@ -66,7 +144,7 @@ BOOL TouchpadReader::IsTouchpadDevice(HANDLE hDevice, PHIDP_PREPARSED_DATA pPrep
     return isTouchpad;
 }
 
-bool TouchpadReader::GetTouchpadDimensions(HANDLE hDevice, DIMENSIONS& size)
+DIMENSIONS TouchpadReader::GetTouchpadDimensions(HANDLE hDevice)
 {
 	PHIDP_PREPARSED_DATA pPreparsed = GetPreparsedData(hDevice);
 	HIDP_CAPS caps = GetDeviceCapabilities(hDevice, pPreparsed);
@@ -92,12 +170,13 @@ bool TouchpadReader::GetTouchpadDimensions(HANDLE hDevice, DIMENSIONS& size)
         }
     }
 
-    size.width = xMax - xMin;
-    size.height = yMax - yMin;
+    DIMENSIONS dimensions;
+    dimensions.width = xMax - xMin;
+    dimensions.height = yMax - yMin;
 
     free(pValueCaps);
     free(pPreparsed);
-    return true;
+    return dimensions;
 }
 
 TOUCHPAD_DATA TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
@@ -126,11 +205,16 @@ TOUCHPAD_DATA TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
                     UINT x = (((WORD)position.x.high) << 8) + position.x.low;
                     UINT y = (((WORD)position.y.high) << 8) + position.y.low;
 
+                    //LPCWSTR hi = L"a";
+                    //wsprintf(hi)
+                    //OutputDebugString(std::to_wstring(touch->unk1).c_str());
+                    //OutputDebugString(std::to_wstring(x).c_str());
 
                     RAW_TOUCH_SIZE size = touch->sizes[i];
                     int width = size.dimensions >> 4;
                     int height = size.dimensions & 0b00001111;
 
+                    touchpadData.touches[i].id = position.index;
                     touchpadData.touches[i].position.x = x;
                     touchpadData.touches[i].position.y = y;
                     touchpadData.touches[i].dimensions.width = width;

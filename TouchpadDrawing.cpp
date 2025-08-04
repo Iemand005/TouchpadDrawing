@@ -128,6 +128,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HWND hButton;
     static TouchpadReader* touchpadReader;
+    static TouchEmulator* touchEmulator;
 
     switch (message)
     {
@@ -135,6 +136,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             // Handle touch input
             touchpadReader = new TouchpadReader(hWnd);
+            touchEmulator = new TouchEmulator();
             //if (RegisterTouchWindow(hWnd, 0)) {
             //    // Touch input registered successfully
             //}
@@ -164,9 +166,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (touchpadReader) {
                 TOUCHPAD_DATA data = touchpadReader->ProcessInput(hRawInput);
 
-                for (int i = 0; i < data.touchCount; i++) {
+				touchEmulator->SendTouchInputs(data.touches, data.touchCount);
 
-                }
+                /*for (int i = 0; i < data.touchCount; i++) {
+                    TOUCH touch = data.touches[i];
+
+                    touchEmulator->SendTouchInput(touch.position.x, touch.position.y, i, true);
+                }*/
                 // Processed touch input
             }
             else {

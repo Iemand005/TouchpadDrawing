@@ -30,12 +30,21 @@
     <ClInclude Include="TouchpadReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TouchEmulator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Touch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TouchpadDrawing.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TouchpadReader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TouchEmulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

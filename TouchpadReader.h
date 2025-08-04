@@ -5,6 +5,10 @@
 #include <hidsdi.h>
 #pragma comment(lib, "hid.lib")
 
+#include <string>
+
+#include "Touch.h"
+
 struct RAW_POSITION_PARTS {
     BYTE low;
     BYTE high;
@@ -29,17 +33,6 @@ struct RAW_TOUCHPAD_EVENT {
     RAW_TOUCH_SIZE sizes[5];
 };
 
-struct DIMENSIONS {
-    UINT width;
-    UINT height;
-};
-
-struct TOUCH {
-    POINT position;
-    DIMENSIONS dimensions;
-    BYTE size;
-};
-
 struct TOUCHPAD_DATA {
     TOUCH touches[5];
     BYTE touchCount;
@@ -53,11 +46,12 @@ public:
     TouchpadReader(HWND hWnd);
     ~TouchpadReader();
 	bool RegisterWindow(HWND hWnd);
+    bool RegisterRawInputDevice(HWND hWnd);
     PHIDP_PREPARSED_DATA GetPreparsedData(HANDLE hDevice);
     HIDP_CAPS GetDeviceCapabilities(HANDLE hDevice);
     HIDP_CAPS GetDeviceCapabilities(HANDLE hDevice, PHIDP_PREPARSED_DATA pPreparsedData);
     PHIDP_VALUE_CAPS GetDeviceCapabilityValues(HIDP_CAPS caps, PHIDP_PREPARSED_DATA pPreparsedData);
-    bool GetTouchpadDimensions(HANDLE hDevice, DIMENSIONS& size);
+    DIMENSIONS GetTouchpadDimensions(HANDLE hDevice);
     BOOL IsTouchpadDevice(HANDLE hDevice);
     BOOL IsTouchpadDevice(HANDLE hDevice, PHIDP_PREPARSED_DATA pPreparsedData);
     TOUCHPAD_DATA ProcessInput(HRAWINPUT hRawInput);
