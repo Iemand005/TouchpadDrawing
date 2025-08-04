@@ -39,11 +39,6 @@ struct TOUCHPAD_DATA {
     DIMENSIONS touchpadSize;
 };
 
-struct TOUCH_EVENT {
-    TOUCH touch;
-	BYTE eventType; // 3 for update, 1 for up
-};
-
 struct TOUCHPAD_EVENT {
 	TOUCH_EVENT touches[5];
     BYTE touchCount;

@@ -48,81 +48,98 @@ public:
         InjectTouchInput(1, &contact);
     }
 
-    void SendTouchInputs(TOUCH* touches, const UINT touchCount) {
+    void SendTouchInputs(TOUCH_EVENT* touches, const UINT touchCount) {
 		const int maxTouches = 5;
 
         POINTER_TOUCH_INFO contacts[maxTouches] = { 0 };
         if (!contacts) return;
 
-        //TOUCH currentActiveTouches[maxTouches];
+        TOUCH currentActiveTouches[maxTouches];
 
         /*for (UINT i = 0; i < 5; ++i)
             currentActiveTouches[i] = FALSE;*/
 
         for (UINT i = 0; i < touchCount; ++i) {
 
-			bool touchWentDown = true;
-            
-            for (UINT j = 0; j < maxTouches && j < activeTouches.size(); ++j) {
-                if (touches[i].id == activeTouches[j]) {
-                    touchWentDown = false;
-                    break;
-                }
-			}
+			TOUCH_EVENT event = touches[i]; 
+            TOUCH touch = event.touch;
 
-			if (touchWentDown) {
-                if (activeTouches.size() < maxTouches) {
-                    activeTouches.push_back(touches[i].id);
+
+            //int activeTouchIndex = -1;
+
+            //for (UINT j = 0; j < maxTouches && j < activeTouches.size(); ++j) {
+            //    if (touches[i].touch.id == activeTouches[j]) {
+            //        activeTouchIndex = i;
+            //        break;
+            //    }
+            //}
+
+            if (event.eventType == 3) {
+                OutputDebugString(L"Touch update event\n");
+
+                bool touchWentDown = true;
+
+                for (UINT j = 0; j < maxTouches && j < activeTouches.size(); ++j) {
+                    if (touch.id == activeTouches[j]) {
+                        touchWentDown = false;
+                        break;
+                    }
+                }
+
+                if (touchWentDown) {
+                    if (activeTouches.size() < maxTouches) {
+                        activeTouches.push_back(touch.id);
+                    }
+                    else {
+                        OutputDebugString(L"Max touch count reached, ignoring new touch\n");
+                        continue;
+                    }
+                }
+
+                UINT touchIndex = touch.id;
+                //BOOL touchWentDown = !activeTouches[touchIndex].down;
+                //currentActiveTouches[touchIndex] = TRUE;
+
+                /*SendTouchInput(touch.position.x, touch.position.y, touch.id - 1, true);
+                SendTouchInput(touch.position.x, touch.position.y, touch.id - 1, false);*/
+
+                OutputDebugString(std::to_wstring(touch.id).c_str());
+                OutputDebugString(TEXT(" "));
+
+                FLOAT touchAspectRatio = (FLOAT)touch.dimensions.width / (FLOAT)touch.dimensions.height;
+                UINT touchWidth = (UINT)(touch.size * touchAspectRatio);
+                UINT touchHeight = (UINT)(touch.size / touchAspectRatio);
+
+                contacts[i].pointerInfo.pointerType = PT_TOUCH;
+                contacts[i].pointerInfo.pointerId = touch.id;
+                contacts[i].pointerInfo.ptPixelLocation.x = touch.position.x;
+                contacts[i].pointerInfo.ptPixelLocation.y = touch.position.y;
+                contacts[i].pointerInfo.pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+
+                if (touchWentDown) {
+                    contacts[i].pointerInfo.pointerFlags |= POINTER_FLAG_DOWN;
+                    //currentActiveTouches[touchIndex] = TRUE;
+                    OutputDebugString(L"Touch went down\n");
                 }
                 else {
-                    OutputDebugString(L"Max touch count reached, ignoring new touch\n");
-                    continue;
-                }   
-			}
-            
-			UINT touchIndex = touches[i].id;
-			//BOOL touchWentDown = !activeTouches[touchIndex].down;
-			//currentActiveTouches[touchIndex] = TRUE;
+                    contacts[i].pointerInfo.pointerFlags |= POINTER_FLAG_UPDATE;
 
-            TOUCH& touch = touches[i];
-            /*SendTouchInput(touch.position.x, touch.position.y, touch.id - 1, true);
-            SendTouchInput(touch.position.x, touch.position.y, touch.id - 1, false);*/
+                    //OutputDebugString(L"Touch updated\n");
+                }
 
-            OutputDebugString(std::to_wstring(touch.id).c_str());
-            OutputDebugString(TEXT(" "));
+                contacts[i].touchFlags = TOUCH_FLAG_NONE;
+                contacts[i].touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION;
+                contacts[i].orientation = 90;
+                contacts[i].rcContact.left = touch.position.x - 2;
+                contacts[i].rcContact.top = touch.position.y - 2;
+                contacts[i].rcContact.right = touch.position.x + 2;
+                contacts[i].rcContact.bottom = touch.position.y + 2;
+                /*contacts[i].rcContact.left = touch.position.x - touchWidth / 2;
+                contacts[i].rcContact.top = touch.position.y - touchHeight / 2;
+                contacts[i].rcContact.right = touch.position.x + touchWidth / 2;
+                contacts[i].rcContact.bottom = touch.position.y + touchHeight / 2;*/
 
-			FLOAT touchAspectRatio = (FLOAT)touch.dimensions.width / (FLOAT)touch.dimensions.height;
-			UINT touchWidth = (UINT)(touch.size * touchAspectRatio);
-			UINT touchHeight = (UINT)(touch.size / touchAspectRatio);
-
-            contacts[i].pointerInfo.pointerType = PT_TOUCH;
-            contacts[i].pointerInfo.pointerId = touch.id;
-            contacts[i].pointerInfo.ptPixelLocation.x = touch.position.x;
-            contacts[i].pointerInfo.ptPixelLocation.y = touch.position.y;
-            contacts[i].pointerInfo.pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
-
-            if (touchWentDown) {
-                contacts[i].pointerInfo.pointerFlags |= POINTER_FLAG_DOWN;
-                //currentActiveTouches[touchIndex] = TRUE;
-				OutputDebugString(L"Touch went down\n");
             }
-            else {
-				contacts[i].pointerInfo.pointerFlags |= POINTER_FLAG_UPDATE;
-
-                //OutputDebugString(L"Touch updated\n");
-            }
-
-            contacts[i].touchFlags = TOUCH_FLAG_NONE;
-            contacts[i].touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION;
-            contacts[i].orientation = 90;
-            contacts[i].rcContact.left = touch.position.x - 2;
-            contacts[i].rcContact.top = touch.position.y - 2;
-            contacts[i].rcContact.right = touch.position.x + 2;
-            contacts[i].rcContact.bottom = touch.position.y + 2;
-            /*contacts[i].rcContact.left = touch.position.x - touchWidth / 2;
-            contacts[i].rcContact.top = touch.position.y - touchHeight / 2;
-			contacts[i].rcContact.right = touch.position.x + touchWidth / 2;
-			contacts[i].rcContact.bottom = touch.position.y + touchHeight / 2;*/
 		}
 
   //      for (UINT i = 0; i < 5; ++i) {
@@ -140,7 +157,7 @@ public:
                 activeTouches.erase(activeTouches.begin() + i);
             }
 		}*/
-        for (auto it = activeTouches.begin(); it != activeTouches.end();) {
+        /*for (auto it = activeTouches.begin(); it != activeTouches.end();) {
             bool found = false;
             for (UINT i = 0; i < touchCount; ++i) {
                 if (*it == touches[i].id) {
@@ -153,7 +170,7 @@ public:
             } else {
                 ++it;
             }
-		}
+		}*/
        /* for (UINT i = 0; i < touchCount; ++i) {
 
         }*/

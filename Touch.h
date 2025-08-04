@@ -14,3 +14,8 @@ struct TOUCH {
     BYTE size;
     BOOL down;
 };
+
+struct TOUCH_EVENT {
+    TOUCH touch;
+    BYTE eventType; // 3 for update, 1 for up
+};
