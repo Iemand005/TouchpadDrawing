@@ -197,7 +197,7 @@ TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
             {
                 RAW_TOUCHPAD_EVENT* touch = (RAW_TOUCHPAD_EVENT*)(raw->data.hid.bRawData);
 
-				TOUCHPAD_EVENT touchpadEvent;
+				//TOUCHPAD_EVENT touchpadEvent;
 
                 touchpadData.touchCount = touch->fingers >> 4;
 
@@ -227,7 +227,7 @@ TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
                     touchpadData.touches[i].touch.size = size.size;
                 }
 
-                return touchpadEvent;
+                return touchpadData;
             }
             else OutputDebugString(L"Ignoring non-touchpad HID input\n");
         }

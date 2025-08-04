@@ -48,171 +48,82 @@ public:
         InjectTouchInput(1, &contact);
     }
 
-    void SendTouchInputs(TOUCH_EVENT* touches, const UINT touchCount) {
-		const int maxTouches = 5;
+    void SendTouchInputs(TOUCH_EVENT* touches, UINT touchCount) {
+
+		if (touchCount > maxTouches) touchCount = maxTouches;
 
         POINTER_TOUCH_INFO contacts[maxTouches] = { 0 };
         if (!contacts) return;
 
-        TOUCH currentActiveTouches[maxTouches];
+        BOOL currentActiveTouches[maxTouches];
 
         /*for (UINT i = 0; i < 5; ++i)
             currentActiveTouches[i] = FALSE;*/
 
         for (UINT i = 0; i < touchCount; ++i) {
 
-			TOUCH_EVENT event = touches[i]; 
+            TOUCH_EVENT event = touches[i];
             TOUCH touch = event.touch;
 
-
-            //int activeTouchIndex = -1;
-
-            //for (UINT j = 0; j < maxTouches && j < activeTouches.size(); ++j) {
-            //    if (touches[i].touch.id == activeTouches[j]) {
-            //        activeTouchIndex = i;
-            //        break;
-            //    }
-            //}
+            POINTER_FLAGS pointerFlags;
 
             if (event.eventType == 3) {
                 OutputDebugString(L"Touch update event\n");
 
-                bool touchWentDown = true;
+                pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
 
-                for (UINT j = 0; j < maxTouches && j < activeTouches.size(); ++j) {
-                    if (touch.id == activeTouches[j]) {
-                        touchWentDown = false;
-                        break;
-                    }
-                }
-
-                if (touchWentDown) {
-                    if (activeTouches.size() < maxTouches) {
-                        activeTouches.push_back(touch.id);
-                    }
-                    else {
-                        OutputDebugString(L"Max touch count reached, ignoring new touch\n");
-                        continue;
-                    }
-                }
-
-                UINT touchIndex = touch.id;
-                //BOOL touchWentDown = !activeTouches[touchIndex].down;
-                //currentActiveTouches[touchIndex] = TRUE;
-
-                /*SendTouchInput(touch.position.x, touch.position.y, touch.id - 1, true);
-                SendTouchInput(touch.position.x, touch.position.y, touch.id - 1, false);*/
-
-                OutputDebugString(std::to_wstring(touch.id).c_str());
-                OutputDebugString(TEXT(" "));
-
-                FLOAT touchAspectRatio = (FLOAT)touch.dimensions.width / (FLOAT)touch.dimensions.height;
-                UINT touchWidth = (UINT)(touch.size * touchAspectRatio);
-                UINT touchHeight = (UINT)(touch.size / touchAspectRatio);
-
-                contacts[i].pointerInfo.pointerType = PT_TOUCH;
-                contacts[i].pointerInfo.pointerId = touch.id;
-                contacts[i].pointerInfo.ptPixelLocation.x = touch.position.x;
-                contacts[i].pointerInfo.ptPixelLocation.y = touch.position.y;
-                contacts[i].pointerInfo.pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
-
-                if (touchWentDown) {
-                    contacts[i].pointerInfo.pointerFlags |= POINTER_FLAG_DOWN;
-                    //currentActiveTouches[touchIndex] = TRUE;
-                    OutputDebugString(L"Touch went down\n");
+                if (activeTouches[touch.id]) {
+                    OutputDebugString(L"Touch already active, updating\n");
+                    pointerFlags |= POINTER_FLAG_UPDATE;
                 }
                 else {
-                    contacts[i].pointerInfo.pointerFlags |= POINTER_FLAG_UPDATE;
-
-                    //OutputDebugString(L"Touch updated\n");
+                    OutputDebugString(L"New touch detected\n");
+                    pointerFlags |= POINTER_FLAG_DOWN;
                 }
 
-                contacts[i].touchFlags = TOUCH_FLAG_NONE;
-                contacts[i].touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION;
-                contacts[i].orientation = 90;
-                contacts[i].rcContact.left = touch.position.x - 2;
-                contacts[i].rcContact.top = touch.position.y - 2;
-                contacts[i].rcContact.right = touch.position.x + 2;
-                contacts[i].rcContact.bottom = touch.position.y + 2;
-                /*contacts[i].rcContact.left = touch.position.x - touchWidth / 2;
-                contacts[i].rcContact.top = touch.position.y - touchHeight / 2;
-                contacts[i].rcContact.right = touch.position.x + touchWidth / 2;
-                contacts[i].rcContact.bottom = touch.position.y + touchHeight / 2;*/
-
+                activeTouches[touch.id] = true;
             }
-		}
-
-  //      for (UINT i = 0; i < 5; ++i) {
-  //          if (activeTouches[i].down && !currentActiveTouches[i]) {
-  //              //contacts[i].pointerInfo.pointerFlags = POINTER_FLAG_UP;
-  //              //activeTouches[i] = FALSE;
-		//		OutputDebugString(L"Touch went up\n");
-  //          }
-
-  //          activeTouches[i].down = currentActiveTouches[i];
-		//}
-
-        /*for (UINT i = 0; i < maxTouches; ++i) {
-            if (!currentActiveTouches[i] && activeTouches.size() > i) {
-                activeTouches.erase(activeTouches.begin() + i);
+            else {
+                pointerFlags = POINTER_FLAG_UP;
+                activeTouches[touch.id] = FALSE;
+                OutputDebugString(L"Touch went up\n");
             }
-		}*/
-        /*for (auto it = activeTouches.begin(); it != activeTouches.end();) {
-            bool found = false;
-            for (UINT i = 0; i < touchCount; ++i) {
-                if (*it == touches[i].id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                it = activeTouches.erase(it);
-            } else {
-                ++it;
-            }
-		}*/
-       /* for (UINT i = 0; i < touchCount; ++i) {
 
-        }*/
+            OutputDebugString(std::to_wstring(touch.id).c_str());
+            OutputDebugString(TEXT(" "));
+
+            FLOAT touchAspectRatio = (FLOAT)touch.dimensions.width / (FLOAT)touch.dimensions.height;
+            UINT touchWidth = (UINT)(touch.size * touchAspectRatio);
+            UINT touchHeight = (UINT)(touch.size / touchAspectRatio);
+
+            contacts[i].pointerInfo.pointerType = PT_TOUCH;
+            contacts[i].pointerInfo.pointerId = touch.id;
+            contacts[i].pointerInfo.ptPixelLocation.x = touch.position.x;
+            contacts[i].pointerInfo.ptPixelLocation.y = touch.position.y;
+            contacts[i].pointerInfo.pointerFlags = pointerFlags;
+
+            contacts[i].touchFlags = TOUCH_FLAG_NONE;
+            contacts[i].touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION;
+            contacts[i].orientation = 90;
+            contacts[i].rcContact.left = touch.position.x - 2;
+            contacts[i].rcContact.top = touch.position.y - 2;
+            contacts[i].rcContact.right = touch.position.x + 2;
+            contacts[i].rcContact.bottom = touch.position.y + 2;
+            /*contacts[i].rcContact.left = touch.position.x - touchWidth / 2;
+            contacts[i].rcContact.top = touch.position.y - touchHeight / 2;
+            contacts[i].rcContact.right = touch.position.x + touchWidth / 2;
+            contacts[i].rcContact.bottom = touch.position.y + touchHeight / 2;*/
+
+
+        }
 
         InjectTouchInput(touchCount, contacts);
     }
 
-    //void SendPenInput(int x, int y, bool isDown, float pressure = 1.0f, int tiltX = 0, int tiltY = 0) {
-    //    POINTER_TYPE_INFO pointerInfo = { 0 };
-    //    pointerInfo.type = PT_PEN;
-    //    pointerInfo.penInfo.pointerInfo.pointerType = PT_PEN;
-    //    pointerInfo.penInfo.pointerInfo.pointerId = 1;  // Pen ID (0 = mouse, 1+ = pen)
-    //    pointerInfo.penInfo.pointerInfo.ptPixelLocation.x = x;
-    //    pointerInfo.penInfo.pointerInfo.ptPixelLocation.y = y;
-
-    //    // Set pen flags
-    //    if (isDown) {
-    //        pointerInfo.penInfo.pointerInfo.pointerFlags =
-    //            POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT | POINTER_FLAG_DOWN;
-    //        g_penActive = true;
-    //    }
-    //    else if (g_penActive) {
-    //        pointerInfo.penInfo.pointerInfo.pointerFlags = POINTER_FLAG_UP;
-    //        g_penActive = false;
-    //    }
-    //    else {
-    //        pointerInfo.penInfo.pointerInfo.pointerFlags = POINTER_FLAG_UPDATE;
-    //    }
-
-    //    // Set pen-specific data (pressure, tilt)
-    //    pointerInfo.penInfo.pressure = (UINT32)(pressure * 1024);  // Normalized (0-1024)
-    //    pointerInfo.penInfo.tiltX = tiltX;  // -90 to +90 degrees
-    //    pointerInfo.penInfo.tiltY = tiltY;
-
-    //    INPUT input = { 0 };
-    //    input.type = INPUT_HARDWARE;
-    //    input.hi..pointerInfo = pointerInfo.penInfo.pointerInfo;
-
-    //    SendInput(1, &input, sizeof(INPUT));
-    //}
 private:
-    vector<INT> activeTouches;
+    static const int maxTouches = 5;
+
+    BOOL activeTouches[maxTouches];
 
     bool g_penActive = false;
 };
