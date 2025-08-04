@@ -164,7 +164,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             HRAWINPUT hRawInput = (HRAWINPUT)lParam;
             if (touchpadReader) {
-                TOUCHPAD_DATA data = touchpadReader->ProcessInput(hRawInput);
+                TOUCHPAD_EVENT data = touchpadReader->ProcessInput(hRawInput);
 
 				touchEmulator->SendTouchInputs(data.touches, data.touchCount);
 

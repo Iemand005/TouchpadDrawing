@@ -179,7 +179,7 @@ DIMENSIONS TouchpadReader::GetTouchpadDimensions(HANDLE hDevice)
     return dimensions;
 }
 
-TOUCHPAD_DATA TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
+TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
 {
 
     UINT size = 0;
@@ -197,6 +197,8 @@ TOUCHPAD_DATA TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
             {
                 RAW_TOUCHPAD_EVENT* touch = (RAW_TOUCHPAD_EVENT*)(raw->data.hid.bRawData);
 
+				TOUCHPAD_EVENT touchpadEvent;
+
                 touchpadData.touchCount = touch->fingers >> 4;
 
                 for (size_t i = 0; i < touchpadData.touchCount; i++)
@@ -204,6 +206,8 @@ TOUCHPAD_DATA TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
                     RAW_TOUCH_POSITION position = touch->positions[i];
                     UINT x = (((WORD)position.x.high) << 8) + position.x.low;
                     UINT y = (((WORD)position.y.high) << 8) + position.y.low;
+					UINT id = position.idAndEventType >> 4;
+					UINT eventType = position.idAndEventType & 0b00001111;
 
                     //LPCWSTR hi = L"a";
                     //wsprintf(hi)
@@ -214,15 +218,16 @@ TOUCHPAD_DATA TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
                     int width = size.dimensions >> 4;
                     int height = size.dimensions & 0b00001111;
 
-                    touchpadData.touches[i].id = position.index;
-                    touchpadData.touches[i].position.x = x;
-                    touchpadData.touches[i].position.y = y;
-                    touchpadData.touches[i].dimensions.width = width;
-                    touchpadData.touches[i].dimensions.height = height;
-                    touchpadData.touches[i].size = size.size;
+					touchpadData.touches[i].eventType = eventType;
+                    touchpadData.touches[i].touch.id = id;
+                    touchpadData.touches[i].touch.position.x = x;
+                    touchpadData.touches[i].touch.position.y = y;
+                    touchpadData.touches[i].touch.dimensions.width = width;
+                    touchpadData.touches[i].touch.dimensions.height = height;
+                    touchpadData.touches[i].touch.size = size.size;
                 }
 
-                return touchpadData;
+                return touchpadEvent;
             }
             else OutputDebugString(L"Ignoring non-touchpad HID input\n");
         }

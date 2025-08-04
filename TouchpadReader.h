@@ -15,7 +15,7 @@ struct RAW_POSITION_PARTS {
 };
 
 struct RAW_TOUCH_POSITION {
-    BYTE index;
+    BYTE idAndEventType;
     RAW_POSITION_PARTS x, y;
 };
 
@@ -39,6 +39,17 @@ struct TOUCHPAD_DATA {
     DIMENSIONS touchpadSize;
 };
 
+struct TOUCH_EVENT {
+    TOUCH touch;
+	BYTE eventType; // 3 for update, 1 for up
+};
+
+struct TOUCHPAD_EVENT {
+	TOUCH_EVENT touches[5];
+    BYTE touchCount;
+    DIMENSIONS touchpadSize;
+};;
+
 class TouchpadReader
 {
 public:
@@ -54,8 +65,8 @@ public:
     DIMENSIONS GetTouchpadDimensions(HANDLE hDevice);
     BOOL IsTouchpadDevice(HANDLE hDevice);
     BOOL IsTouchpadDevice(HANDLE hDevice, PHIDP_PREPARSED_DATA pPreparsedData);
-    TOUCHPAD_DATA ProcessInput(HRAWINPUT hRawInput);
+    TOUCHPAD_EVENT ProcessInput(HRAWINPUT hRawInput);
 private:
-    TOUCHPAD_DATA touchpadData;
+    TOUCHPAD_EVENT touchpadData;
 };
 
