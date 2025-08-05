@@ -33,12 +33,6 @@ bool TouchpadReader::RegisterRawInputDevice(HWND hWnd) {
         OutputDebugString(L"Failed to register for raw input\n");
     }
 
-    rid.usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
-    rid.usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
-    rid.dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY;  // Prevents WM_MOUSEMOVE
-    rid.hwndTarget = hWnd;
-
-    RegisterRawInputDevices(&rid, 1, sizeof(rid));
     /*else {
 
         RAWINPUTDEVICELIST inputDevice;

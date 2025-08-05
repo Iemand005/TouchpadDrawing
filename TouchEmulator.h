@@ -1,7 +1,7 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
-#define _WIN32_WINNT 0x0602
+#define _WIN32_WINNT NTDDI_WIN10_RS5
 #include <windows.h>
 #include <winuser.h>
 
@@ -17,14 +17,16 @@ class TouchEmulator
 {
 public:
 
-	//void UpdateScreenDimensions();
+    //void UpdateScreenDimensions();
 
     TouchEmulator() {
         InitializeTouchInjection(1, TOUCH_FEEDBACK_DEFAULT);
-		UpdateScreenDimensions();
+        UpdateScreenDimensions();
+
+        hDevice = CreateSyntheticPointerDevice(PT_PEN, maxTouches, POINTER_FEEDBACK_INDIRECT);
     }
 
-    
+
 
     void SendTouchInput(int x, int y, int id, bool isDown) {
         POINTER_TOUCH_INFO contact;
@@ -54,12 +56,12 @@ public:
     }
 
     void GetScreenResolution(UINT& width, UINT& height) {
-    /*    RECT desktopRect;
-        GetClientRect(GetDesktopWindow(), &desktopRect);
-        width = desktopRect.right - desktopRect.left;
-        height = desktopRect.bottom - desktopRect.top;
-	*/
-    
+        /*    RECT desktopRect;
+            GetClientRect(GetDesktopWindow(), &desktopRect);
+            width = desktopRect.right - desktopRect.left;
+            height = desktopRect.bottom - desktopRect.top;
+        */
+
         width = GetSystemMetrics(SM_CXSCREEN);
         height = GetSystemMetrics(SM_CYSCREEN);
     }
@@ -69,17 +71,29 @@ public:
         GetScreenResolution(screenDimensions.width, screenDimensions.height);
     }
 
+    POINT TransformTouchToDisplayPosition(POINT touchPosition, DIMENSIONS touchAreaSize) {
+        FLOAT normalizedX = touchPosition.x / (FLOAT)touchAreaSize.width;
+        FLOAT normalizedY = touchPosition.y / (FLOAT)touchAreaSize.height;
+
+        LONG screenX = normalizedX * screenDimensions.width;
+        LONG screenY = normalizedY * screenDimensions.height;
+		
+        return { screenX, screenY };
+    }
+
     void SendTouchInputs(TOUCHPAD_EVENT touchpadEvent) {
 
-		INT touchCount = touchpadEvent.touchCount;
+        INT touchCount = touchpadEvent.touchCount;
         TOUCH_EVENT* touches = touchpadEvent.touches;
-        
-		if (touchCount > maxTouches) touchCount = maxTouches;
+
+        if (touchCount > maxTouches) touchCount = maxTouches;
 
         POINTER_TOUCH_INFO contacts[maxTouches] = { 0 };
         if (!contacts) return;
 
         BOOL currentActiveTouches[maxTouches];
+
+		//SendPenInput(touches[0].touch, touchpadEvent.touchpadSize);
 
         /*for (UINT i = 0; i < 5; ++i)
             currentActiveTouches[i] = FALSE;*/
@@ -89,11 +103,13 @@ public:
             TOUCH_EVENT event = touches[i];
             TOUCH touch = event.touch;
 
-            FLOAT normalizedX = touch.position.x / (FLOAT)touchpadEvent.touchpadSize.width;
+            /*FLOAT normalizedX = touch.position.x / (FLOAT)touchpadEvent.touchpadSize.width;
             FLOAT normalizedY = touch.position.y / (FLOAT)touchpadEvent.touchpadSize.height;
 
-			FLOAT screenX = normalizedX * screenDimensions.width;
-			FLOAT screenY = normalizedY * screenDimensions.height;
+            FLOAT screenX = normalizedX * screenDimensions.width;
+            FLOAT screenY = normalizedY * screenDimensions.height;*/
+
+            POINT displayPosition = TransformTouchToDisplayPosition(touch.position, touchpadEvent.touchpadSize);
 
             POINTER_FLAGS pointerFlags;
 
@@ -128,8 +144,7 @@ public:
 
             contacts[i].pointerInfo.pointerType = PT_TOUCH;
             contacts[i].pointerInfo.pointerId = touch.id;
-            contacts[i].pointerInfo.ptPixelLocation.x = screenX;
-            contacts[i].pointerInfo.ptPixelLocation.y = screenY;
+            contacts[i].pointerInfo.ptPixelLocation = displayPosition;
             contacts[i].pointerInfo.pointerFlags = pointerFlags;
 
             contacts[i].touchFlags = TOUCH_FLAG_NONE;
@@ -150,12 +165,25 @@ public:
         InjectTouchInput(touchCount, contacts);
     }
 
-    void SendPenInput() {
+    BOOL SendPenInput(TOUCH touch, DIMENSIONS touchAreaSize) {
 
-		INPUT input = { 0 };
-		input.type = PT_PEN;
-		input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
-		SendInput(1, &g_penActive, sizeof(g_penActive));
+        HSYNTHETICPOINTERDEVICE device = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
+        if (!hDevice) return false;
+
+        POINT position = TransformTouchToDisplayPosition(touch.position, touchAreaSize);
+
+        POINTER_TYPE_INFO inputInfo[1] = {};
+        inputInfo[0].type = PT_PEN;
+        inputInfo[0].penInfo.pointerInfo.pointerType = PT_PEN;
+        inputInfo[0].penInfo.pointerInfo.pointerId = 0;
+        inputInfo[0].penInfo.pointerInfo.frameId = 0;
+        inputInfo[0].penInfo.pointerInfo.pointerFlags = POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+        inputInfo[0].penInfo.penMask = PEN_MASK_NONE;
+        inputInfo[0].penInfo.pointerInfo.ptPixelLocation = position;
+
+
+        BOOL injected = InjectSyntheticPointerInput(device, inputInfo, 1);
+        return injected;
     }
 
 private:
@@ -164,6 +192,8 @@ private:
     BOOL activeTouches[maxTouches];
 
 	DIMENSIONS screenDimensions;
+
+    HSYNTHETICPOINTERDEVICE hDevice;
 
     bool g_penActive = false;
 };
