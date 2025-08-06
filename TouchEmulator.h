@@ -144,7 +144,7 @@ public:
             if (event.eventType == 3) {
                 OutputDebugString(L"Touch update event\n");
 
-                pointerFlags;
+                pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
 
                 if (activeTouches[touch.id]) {
                     OutputDebugString(L"Touch already active, updating\n");
@@ -152,7 +152,7 @@ public:
                 }
                 else {
                     OutputDebugString(L"New touch detected\n");
-                    pointerFlags |= POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+                    pointerFlags |= POINTER_FLAG_DOWN;
                 }
 
                 activeTouches[touch.id] = true;
@@ -227,17 +227,22 @@ public:
 
         POINT position = TransformTouchToDisplayPosition(touch.position, touchAreaSize);
 
-        POINTER_TYPE_INFO inputInfo[1] = {};
-        inputInfo[0].type = PT_PEN;
-        inputInfo[0].penInfo.pointerInfo.pointerType = PT_PEN;
-        inputInfo[0].penInfo.pointerInfo.pointerId = 0;
-        inputInfo[0].penInfo.pointerInfo.frameId = penFrameId++;
-        inputInfo[0].penInfo.pointerInfo.pointerFlags = pointerFlags;
-        inputInfo[0].penInfo.penMask = PEN_MASK_NONE;
-        inputInfo[0].penInfo.pointerInfo.ptPixelLocation = position;
+        POINTER_TYPE_INFO inputInfo = {};
+        inputInfo.type = PT_PEN;
+        inputInfo.penInfo.pointerInfo.pointerType = PT_PEN;
+        inputInfo.penInfo.pointerInfo.pointerId = 0;
+        inputInfo.penInfo.pointerInfo.frameId = ++penFrameId;
+        inputInfo.penInfo.pointerInfo.pointerFlags = pointerFlags;
+        inputInfo.penInfo.penMask = PEN_MASK_NONE;
+        inputInfo.penInfo.pointerInfo.ptPixelLocation = position;
 
 
-        BOOL injected = InjectSyntheticPointerInput(hDevice, inputInfo, 1);
+        BOOL injected = InjectSyntheticPointerInput(hDevice, &inputInfo, 1);
+
+        if (!injected) {
+			OutputDebugString(L"Failed to inject pen input\n");
+        }
+
         return injected;
     }
 
@@ -252,7 +257,7 @@ private:
 
     bool g_penActive = false;
 
-    int minDelayMs = 1000;
+    int minDelayMs = 240/1000;
 
 	int penFrameId = 0;
 };
