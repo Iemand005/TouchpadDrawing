@@ -2,16 +2,19 @@
 
 #define WIN32_LEAN_AND_MEAN
 #define _WIN32_WINNT NTDDI_WIN10_RS5
+
 #include <windows.h>
 #include <winuser.h>
 
 #include <memory>
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include "Touch.h"
 
 using namespace std;
+using namespace chrono;
 
 class TouchEmulator
 {
@@ -23,12 +26,21 @@ public:
         InitializeTouchInjection(1, TOUCH_FEEDBACK_DEFAULT);
         UpdateScreenDimensions();
 
-        hDevice = CreateSyntheticPointerDevice(PT_PEN, maxTouches, POINTER_FEEDBACK_INDIRECT);
+        hDevice = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
     }
 
 
 
     void SendTouchInput(int x, int y, int id, bool isDown) {
+        static auto lastCall = steady_clock::now();
+        auto now = steady_clock::now();
+
+        auto duration = duration_cast<milliseconds>(now - lastCall).count();
+
+        if (duration < minDelayMs) {
+            //return; // Prevent sending too many inputs too quickly
+		}
+
         POINTER_TOUCH_INFO contact;
         memset(&contact, 0, sizeof(POINTER_TOUCH_INFO));
 
@@ -81,19 +93,35 @@ public:
         return { screenX, screenY };
     }
 
+    steady_clock::time_point lastCall = steady_clock::now();
+    
     void SendTouchInputs(TOUCHPAD_EVENT touchpadEvent) {
+
+        auto now = steady_clock::now();
+
+        auto duration = duration_cast<milliseconds>(now - lastCall).count();
+
+        /*OutputDebugString(to_wstring(duration).c_str());
+        if (duration < minDelayMs) {
+            OutputDebugString(L"Touch input throttled\n");
+            
+            return;
+        }*/
+
+
 
         INT touchCount = touchpadEvent.touchCount;
         TOUCH_EVENT* touches = touchpadEvent.touches;
 
-        if (touchCount > maxTouches) touchCount = maxTouches;
+        if (touchCount > maxTouches)
+            touchCount = maxTouches;
 
         POINTER_TOUCH_INFO contacts[maxTouches] = { 0 };
         if (!contacts) return;
 
         BOOL currentActiveTouches[maxTouches];
 
-		//SendPenInput(touches[0].touch, touchpadEvent.touchpadSize);
+		
 
         /*for (UINT i = 0; i < 5; ++i)
             currentActiveTouches[i] = FALSE;*/
@@ -116,7 +144,7 @@ public:
             if (event.eventType == 3) {
                 OutputDebugString(L"Touch update event\n");
 
-                pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+                pointerFlags;
 
                 if (activeTouches[touch.id]) {
                     OutputDebugString(L"Touch already active, updating\n");
@@ -124,7 +152,7 @@ public:
                 }
                 else {
                     OutputDebugString(L"New touch detected\n");
-                    pointerFlags |= POINTER_FLAG_DOWN;
+                    pointerFlags |= POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
                 }
 
                 activeTouches[touch.id] = true;
@@ -133,6 +161,23 @@ public:
                 pointerFlags = POINTER_FLAG_UP;
                 activeTouches[touch.id] = FALSE;
                 OutputDebugString(L"Touch went up\n");
+            }
+
+            if (touch.id == 0) {
+
+                if (pointerFlags & POINTER_FLAG_UPDATE) {
+                    OutputDebugString(to_wstring(duration).c_str());
+                    if (duration < minDelayMs) {
+                        OutputDebugString(L"Touch input throttled\n");
+
+                        return;
+                    }
+                }
+
+                SendPenInput(touches[0].touch, touchpadEvent.touchpadSize, pointerFlags);
+                lastCall = now;
+
+                return;
             }
 
             OutputDebugString(std::to_wstring(touch.id).c_str());
@@ -165,9 +210,19 @@ public:
         InjectTouchInput(touchCount, contacts);
     }
 
-    BOOL SendPenInput(TOUCH touch, DIMENSIONS touchAreaSize) {
+    BOOL SendPenInput(TOUCH touch, DIMENSIONS touchAreaSize, POINTER_FLAGS pointerFlags) {
 
-        HSYNTHETICPOINTERDEVICE device = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
+        static auto lastCall = steady_clock::now();
+        auto now = steady_clock::now();
+
+        auto duration = duration_cast<milliseconds>(now - lastCall).count();
+
+        if (duration < minDelayMs) {
+            return false;
+        }
+
+        //HSYNTHETICPOINTERDEVICE device = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
+		if (!hDevice) hDevice = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
         if (!hDevice) return false;
 
         POINT position = TransformTouchToDisplayPosition(touch.position, touchAreaSize);
@@ -176,13 +231,13 @@ public:
         inputInfo[0].type = PT_PEN;
         inputInfo[0].penInfo.pointerInfo.pointerType = PT_PEN;
         inputInfo[0].penInfo.pointerInfo.pointerId = 0;
-        inputInfo[0].penInfo.pointerInfo.frameId = 0;
-        inputInfo[0].penInfo.pointerInfo.pointerFlags = POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+        inputInfo[0].penInfo.pointerInfo.frameId = penFrameId++;
+        inputInfo[0].penInfo.pointerInfo.pointerFlags = pointerFlags;
         inputInfo[0].penInfo.penMask = PEN_MASK_NONE;
         inputInfo[0].penInfo.pointerInfo.ptPixelLocation = position;
 
 
-        BOOL injected = InjectSyntheticPointerInput(device, inputInfo, 1);
+        BOOL injected = InjectSyntheticPointerInput(hDevice, inputInfo, 1);
         return injected;
     }
 
@@ -196,5 +251,9 @@ private:
     HSYNTHETICPOINTERDEVICE hDevice;
 
     bool g_penActive = false;
+
+    int minDelayMs = 1000;
+
+	int penFrameId = 0;
 };
 

@@ -24,7 +24,7 @@ bool TouchpadReader::RegisterRawInputDevice(HWND hWnd) {
 
     rid.usUsagePage = 0x0D;  // Digitizer
     rid.usUsage = 0x05;      // Touchpad
-    rid.dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY;
+    rid.dwFlags = RIDEV_INPUTSINK;
     rid.hwndTarget = hWnd;
 
     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
