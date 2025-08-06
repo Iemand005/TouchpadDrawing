@@ -127,6 +127,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HWND hButton;
+    static HWND hInfoLabel;
     static TouchpadReader* touchpadReader;
     static TouchEmulator* touchEmulator;
 
@@ -145,6 +146,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //}
 
             hButton = CreateWindow(L"BUTTON", L"Touch Me", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 10, 100, 30, hWnd, (HMENU)1, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
+
+			hInfoLabel = CreateWindow(L"STATIC", L"Touchpad Drawing Application", WS_VISIBLE | WS_CHILD, 10, 50, 300, 100, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
+
 
             if (hButton != NULL) {
 			    ShowWindow(hButton, SW_SHOW);
@@ -166,7 +170,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (touchpadReader) {
                 TOUCHPAD_EVENT data = touchpadReader->ProcessInput(hRawInput);
 
-				touchEmulator->SendTouchInputs(data);
+                if (touchEmulator->SendTouchInputs(data)) {
+
+                    auto dimensions = data.touches[0].touch.dimensions;
+                    auto s9ze = data.touches[0].touch.size;
+
+					// Output touch information
+                    std::wstring touchInfo = L"Touch ID: " + std::to_wstring(data.touches[0].touch.id) +
+                        L", Position: (" + std::to_wstring(data.touches[0].touch.position.x) + L", " +
+                        std::to_wstring(data.touches[0].touch.position.y) + L"), Dimensions: (" +
+                        std::to_wstring(dimensions.width) + L", " + std::to_wstring(dimensions.height) + L"), Size: " +
+                        std::to_wstring(s9ze);
+                    OutputDebugString(touchInfo.c_str());
+                    // Update the info label with touch information
+                    SetWindowText(hInfoLabel, touchInfo.c_str());
+                }
+                else {
+                    // Update the info label with an error message
+                    SetWindowText(hInfoLabel, L"Failed to process touch input.");
+                }
 
             }
             else {

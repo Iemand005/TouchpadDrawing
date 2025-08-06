@@ -95,7 +95,7 @@ public:
 
     steady_clock::time_point lastCall = steady_clock::now();
     
-    void SendTouchInputs(TOUCHPAD_EVENT touchpadEvent) {
+    BOOL SendTouchInputs(TOUCHPAD_EVENT touchpadEvent) {
 
         auto now = steady_clock::now();
 
@@ -117,7 +117,7 @@ public:
             touchCount = maxTouches;
 
         POINTER_TOUCH_INFO contacts[maxTouches] = { 0 };
-        if (!contacts) return;
+        if (!contacts) return false;
 
         BOOL currentActiveTouches[maxTouches];
 
@@ -170,14 +170,14 @@ public:
                     if (duration < minDelayMs) {
                         OutputDebugString(L"Touch input throttled\n");
 
-                        return;
+                        return false;
                     }
                 }
 
                 SendPenInput(touches[0].touch, touchpadEvent.touchpadSize, pointerFlags);
                 lastCall = now;
 
-                return;
+                return true;
             }
 
             OutputDebugString(std::to_wstring(touch.id).c_str());
@@ -207,7 +207,9 @@ public:
 
         }
 
-        InjectTouchInput(touchCount, contacts);
+        BOOL success = InjectTouchInput(touchCount, contacts);
+
+        return success;
     }
 
     BOOL SendPenInput(TOUCH touch, DIMENSIONS touchAreaSize, POINTER_FLAGS pointerFlags) {
