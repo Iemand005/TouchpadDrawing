@@ -4,6 +4,7 @@ TouchpadReader::TouchpadReader(HWND hWnd){
 	RegisterWindow(hWnd);
     RegisterRawInputDevice(hWnd);
 
+
     //DIMENSIONS touchpadDimensions = GetTouchpadDimensions()
 }
 
@@ -33,71 +34,17 @@ bool TouchpadReader::RegisterRawInputDevice(HWND hWnd) {
         OutputDebugString(L"Failed to register for raw input\n");
     }
 
-    /*else {
+    rid.usUsagePage = 0x01;  // Digitizer
+    rid.usUsage = 0x02;      // Touchpad
+    rid.dwFlags = RIDEV_INPUTSINK;
+    rid.hwndTarget = hWnd;
 
-        RAWINPUTDEVICELIST inputDevice;
-        INT 
-        GetRawInputDeviceList(&inputDevice, &deviceCount, sizeof(RAWINPUTDEVICELIST));
-    }*/
-
-    if (GetRawInputDeviceList(NULL, &deviceCount, sizeof(RAWINPUTDEVICELIST)) != -1) {
-
-        PRAWINPUTDEVICELIST inputDeviceList = (PRAWINPUTDEVICELIST)malloc(sizeof(RAWINPUTDEVICELIST) * deviceCount);
-        if (GetRawInputDeviceList(inputDeviceList, &deviceCount, sizeof(RAWINPUTDEVICELIST))) {
-
-            PRAWINPUTDEVICE rawInputDevices = (PRAWINPUTDEVICE)malloc(sizeof(RAWINPUTDEVICE) * deviceCount);
-
-            for (UINT i = 0; i < deviceCount; i++)
-            {
-                RAWINPUTDEVICELIST inputDevice = inputDeviceList[i];
-                HANDLE hDevice = inputDevice.hDevice;
-                DWORD deviceType = inputDevice.dwType;
-
-
-                UINT deviceInfoSize;
-                GetRawInputDeviceInfo(hDevice, RIDI_DEVICEINFO, NULL, &deviceInfoSize);
-
-                RID_DEVICE_INFO deviceInfo;
-                deviceInfo.cbSize = sizeof(RID_DEVICE_INFO);
-
-                GetRawInputDeviceInfo(hDevice, RIDI_DEVICEINFO, &deviceInfo, &deviceInfoSize);
-
-                if (deviceInfo.hid.usUsagePage == 0x0D && deviceInfo.hid.usUsage == 0x05) // Touchpad
-                {
-                    OutputDebugString(L"AKAKAK");
-
-                    int width, height;
-                    DIMENSIONS dimensions = GetTouchpadDimensions(hDevice);
-
-                    touchpadData.touchpadSize = dimensions;
-                }
-
-                switch (inputDevice.dwType)
-                {
-                case RIM_TYPEMOUSE:    OutputDebugString(L"Mouse\n"); break;
-                case RIM_TYPEKEYBOARD: OutputDebugString(L"Keyboard\n"); break;
-                case RIM_TYPEHID:
-                    OutputDebugString(L"HID\n");
-                    break;
-                default:               OutputDebugString(L"Unknown (%d)\n"); break;
-                }
-
-                RAWINPUTDEVICE rawInputDevice;
-                rawInputDevice.usUsagePage = deviceInfo.hid.usUsagePage;
-                rawInputDevice.usUsage = deviceInfo.hid.usUsage;
-                rawInputDevice.dwFlags = RIDEV_INPUTSINK;
-                rawInputDevice.hwndTarget = hWnd;
-
-                if (RegisterRawInputDevices(&rawInputDevice, 1, sizeof(RAWINPUTDEVICE))) {
-                    return true;
-                    OutputDebugString(L"Failed to register raw input devices\n");
-                }
-
-            }
-        }
-        else free(inputDeviceList);
-        
+    if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+    {
+        // Error handling
+        OutputDebugString(L"Failed to register for raw input\n");
     }
+
     return false;
 }
 
@@ -199,6 +146,18 @@ TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
     if (GetRawInputData(hRawInput, RID_INPUT, buffer, &size, sizeof(RAWINPUTHEADER)) == size)
     {
         RAWINPUT* raw = (RAWINPUT*)buffer;
+
+        if (raw->header.dwType == RIM_TYPEMOUSE) {
+            raw->data.mouse.ulButtons;
+            /*OutputDebugString(TEXT("Buttons: "));
+            OutputDebugString(std::to_wstring(raw->data.mouse.usButtonFlags).c_str());
+            OutputDebugString(TEXT("\n"));*/
+
+
+			BOOL pressed = raw->data.mouse.usButtonFlags & RI_MOUSE_BUTTON_1_DOWN;
+
+			touchpadData.buttonPressed = pressed;
+        }
         
         if (raw->header.dwType == RIM_TYPEHID)
         {
@@ -207,6 +166,14 @@ TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
             {
                 RAW_TOUCHPAD_EVENT* touch = (RAW_TOUCHPAD_EVENT*)(raw->data.hid.bRawData);
 
+                /*OutputDebugString(TEXT("Buttons: "));
+                OutputDebugString(std::to_wstring(raw->data.mouse.ulRawButtons).c_str());
+                OutputDebugString(TEXT("\n"));
+
+                OutputDebugString(TEXT("Unk: "));
+                OutputDebugString(std::to_wstring(touch->unk1).c_str());
+                OutputDebugString(TEXT("\n"));*/
+
 				//TOUCHPAD_EVENT touchpadEvent;
 
                 touchpadData.touchCount = touch->fingers >> 4;
@@ -214,6 +181,9 @@ TOUCHPAD_EVENT TouchpadReader::ProcessInput(HRAWINPUT hRawInput)
                 for (size_t i = 0; i < touchpadData.touchCount; i++)
                 {
                     RAW_TOUCH_POSITION position = touch->positions[i];
+
+                    
+
                     UINT x = (((WORD)position.x.high) << 8) + position.x.low;
                     UINT y = (((WORD)position.y.high) << 8) + position.y.low;
 					UINT id = position.idAndEventType >> 4;

@@ -56,6 +56,6 @@ public:
     BOOL IsTouchpadDevice(HANDLE hDevice, PHIDP_PREPARSED_DATA pPreparsedData);
     TOUCHPAD_EVENT ProcessInput(HRAWINPUT hRawInput);
 private:
-    TOUCHPAD_EVENT touchpadData;
+    TOUCHPAD_EVENT touchpadData = { 0 };
 };
 

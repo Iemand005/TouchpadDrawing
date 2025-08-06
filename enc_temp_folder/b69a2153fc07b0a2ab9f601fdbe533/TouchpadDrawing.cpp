@@ -197,9 +197,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         return 0;
 		break;
-    case WM_LBUTTONDOWN:
-        OutputDebugString(TEXT("Da button went down b ro"));
-        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);

@@ -131,31 +131,40 @@ public:
             TOUCH_EVENT event = touches[i];
             TOUCH touch = event.touch;
 
-            /*FLOAT normalizedX = touch.position.x / (FLOAT)touchpadEvent.touchpadSize.width;
-            FLOAT normalizedY = touch.position.y / (FLOAT)touchpadEvent.touchpadSize.height;
-
-            FLOAT screenX = normalizedX * screenDimensions.width;
-            FLOAT screenY = normalizedY * screenDimensions.height;*/
 
             POINT displayPosition = TransformTouchToDisplayPosition(touch.position, touchpadEvent.touchpadSize);
 
             POINTER_FLAGS pointerFlags;
 
             if (event.eventType == 3) {
-                OutputDebugString(L"Touch update event\n");
+                //OutputDebugString(L"Touch update event\n");
 
-                pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+                pointerFlags = POINTER_FLAG_INRANGE;
+                //if (touchpadEvent.buttonPressed || !simulateHover)
 
-                if (activeTouches[touch.id]) {
-                    OutputDebugString(L"Touch already active, updating\n");
-                    pointerFlags |= POINTER_FLAG_UPDATE;
+                if (touchpadEvent.buttonPressed) {
+                    if (!down) {
+                        pointerFlags |= POINTER_FLAG_DOWN | POINTER_FLAG_INCONTACT;
+                        OutputDebugString(L"Touchpad button went down\n");
+                        down = true;
+                    }
+                } else down = false;
+                
+                if (down)
+                    pointerFlags |= POINTER_FLAG_INCONTACT;
+
+                if (!activeTouches[touch.id]) {
+                    OutputDebugString(L"New touch detected\n");
+                    //pointerFlags |= POINTER_FLAG_DOWN;
+
+                    isPenActive = touch.size < touchSizeThreshold;
+                    activeTouches[touch.id] = true;
                 }
                 else {
-                    OutputDebugString(L"New touch detected\n");
-                    pointerFlags |= POINTER_FLAG_DOWN;
+                    //OutputDebugString(L"Touch already active, updating\n");
+                    pointerFlags |= POINTER_FLAG_UPDATE;
                 }
 
-                activeTouches[touch.id] = true;
             }
             else {
                 pointerFlags = POINTER_FLAG_UP;
@@ -163,7 +172,7 @@ public:
                 OutputDebugString(L"Touch went up\n");
             }
 
-            if (touch.id == 0 && touch.size < touchSizeThreshold) {
+            if (touch.id == 0 && isPenActive) {
 
                 if (pointerFlags & POINTER_FLAG_UPDATE) {
                     OutputDebugString(to_wstring(duration).c_str());
@@ -180,8 +189,8 @@ public:
                 return true;
             }
 
-            OutputDebugString(std::to_wstring(touch.id).c_str());
-            OutputDebugString(TEXT(" "));
+            /*OutputDebugString(std::to_wstring(touch.id).c_str());
+            OutputDebugString(TEXT(" "));*/
 
             FLOAT touchAspectRatio = (FLOAT)touch.dimensions.width / (FLOAT)touch.dimensions.height;
             UINT touchWidth = (UINT)(touch.size * touchAspectRatio);
@@ -206,6 +215,8 @@ public:
 
 
         }
+
+        if (!simulateTouch) return true;
 
         BOOL success = InjectTouchInput(touchCount, contacts);
 
@@ -252,6 +263,7 @@ private:
     static const int maxTouches = 5;
 
     BOOL activeTouches[maxTouches];
+    BOOL down = FALSE;
 
 	DIMENSIONS screenDimensions;
 
@@ -263,6 +275,10 @@ private:
 
 	int penFrameId = 0;
 
+	bool isPenActive = false;
 	UINT touchSizeThreshold = 18;
+
+    BOOL simulateTouch = false;
+    BOOL simulateHover = true;
 };
 
