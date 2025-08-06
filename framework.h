@@ -9,6 +9,12 @@
 // Windows Header Files
 #include <windows.h>
 #include <winuser.h>
+#include <commctrl.h>
+#include <uxtheme.h>
+
+#pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "uxtheme.lib")
+
 // C RunTime Header Files
 #include <stdlib.h>
 #include <malloc.h>

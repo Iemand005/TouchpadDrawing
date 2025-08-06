@@ -29,6 +29,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     // TODO: Place code here.
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -126,8 +127,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	HWND hButton;
     static HWND hInfoLabel;
+    static HWND hPenThresholdSlider;
     static TouchpadReader* touchpadReader;
     static TouchEmulator* touchEmulator;
 
@@ -135,27 +136,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
         {
+
+            INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_BAR_CLASSES };
+            InitCommonControlsEx(&icc);
+
+            HFONT hFont = CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+
             // Handle touch input
             touchpadReader = new TouchpadReader(hWnd);
             touchEmulator = new TouchEmulator();
-            //if (RegisterTouchWindow(hWnd, 0)) {
-            //    // Touch input registered successfully
-            //}
-            //else {
-            //    MessageBox(hWnd, L"Failed to register touch window.", L"Error", MB_OK | MB_ICONERROR);
-            //}
-
-            hButton = CreateWindow(L"BUTTON", L"Touch Me", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 10, 100, 30, hWnd, (HMENU)1, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
-
+            
 			hInfoLabel = CreateWindow(L"STATIC", L"Touchpad Drawing Application", WS_VISIBLE | WS_CHILD, 10, 50, 300, 100, hWnd, NULL, (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
 
+            SendMessage(hInfoLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
 
-            if (hButton != NULL) {
-			    ShowWindow(hButton, SW_SHOW);
-			}
-            else {
-                MessageBox(hWnd, L"Failed to create button.", L"Error", MB_OK | MB_ICONERROR);
-            }
+
+            hPenThresholdSlider = CreateWindow(TRACKBAR_CLASS, L"", WS_VISIBLE | WS_CHILD | TBS_HORZ, 10, 40, 200, 30, hWnd, (HMENU)101, GetModuleHandle(NULL), NULL);
 
             // Set up touch feedback
             if (!InitializeTouchInjection(1, TOUCH_FEEDBACK_DEFAULT)) {

@@ -101,15 +101,6 @@ public:
 
         auto duration = duration_cast<milliseconds>(now - lastCall).count();
 
-        /*OutputDebugString(to_wstring(duration).c_str());
-        if (duration < minDelayMs) {
-            OutputDebugString(L"Touch input throttled\n");
-            
-            return;
-        }*/
-
-
-
         INT touchCount = touchpadEvent.touchCount;
         TOUCH_EVENT* touches = touchpadEvent.touches;
 
@@ -121,10 +112,6 @@ public:
 
         BOOL currentActiveTouches[maxTouches];
 
-		
-
-        /*for (UINT i = 0; i < 5; ++i)
-            currentActiveTouches[i] = FALSE;*/
 
         for (UINT i = 0; i < touchCount; ++i) {
 
@@ -137,31 +124,21 @@ public:
             POINTER_FLAGS pointerFlags;
 
             if (event.eventType == 3) {
-                //OutputDebugString(L"Touch update event\n");
 
                 pointerFlags = POINTER_FLAG_INRANGE;
-                //if (touchpadEvent.buttonPressed || !simulateHover)
 
-                if (touchpadEvent.buttonPressed) {
-                    if (!down) {
-                        pointerFlags |= POINTER_FLAG_DOWN | POINTER_FLAG_INCONTACT;
-                        OutputDebugString(L"Touchpad button went down\n");
-                        down = true;
-                    }
-                } else down = false;
+                down = touch.size > touchSizeThreshold;
                 
                 if (down)
                     pointerFlags |= POINTER_FLAG_INCONTACT;
 
                 if (!activeTouches[touch.id]) {
                     OutputDebugString(L"New touch detected\n");
-                    //pointerFlags |= POINTER_FLAG_DOWN;
 
-                    isPenActive = touch.size < touchSizeThreshold;
+                    isPenActive = touch.size < penDownThreshold;
                     activeTouches[touch.id] = true;
                 }
                 else {
-                    //OutputDebugString(L"Touch already active, updating\n");
                     pointerFlags |= POINTER_FLAG_UPDATE;
                 }
 
@@ -175,7 +152,6 @@ public:
             if (touch.id == 0 && isPenActive) {
 
                 if (pointerFlags & POINTER_FLAG_UPDATE) {
-                    OutputDebugString(to_wstring(duration).c_str());
                     if (duration < minDelayMs) {
                         OutputDebugString(L"Touch input throttled\n");
 
@@ -183,14 +159,16 @@ public:
                     }
                 }
 
+                int newMouseDown = (GetAsyncKeyState(VK_LBUTTON));
+
+                OutputDebugString(to_wstring(newMouseDown).c_str());
+
                 SendPenInput(touches[0].touch, touchpadEvent.touchpadSize, pointerFlags);
                 lastCall = now;
 
                 return true;
             }
 
-            /*OutputDebugString(std::to_wstring(touch.id).c_str());
-            OutputDebugString(TEXT(" "));*/
 
             FLOAT touchAspectRatio = (FLOAT)touch.dimensions.width / (FLOAT)touch.dimensions.height;
             UINT touchWidth = (UINT)(touch.size * touchAspectRatio);
@@ -208,11 +186,6 @@ public:
             contacts[i].rcContact.top = touch.position.y - 2;
             contacts[i].rcContact.right = touch.position.x + 2;
             contacts[i].rcContact.bottom = touch.position.y + 2;
-            /*contacts[i].rcContact.left = touch.position.x - touchWidth / 2;
-            contacts[i].rcContact.top = touch.position.y - touchHeight / 2;
-            contacts[i].rcContact.right = touch.position.x + touchWidth / 2;
-            contacts[i].rcContact.bottom = touch.position.y + touchHeight / 2;*/
-
 
         }
 
@@ -271,12 +244,15 @@ private:
 
     bool g_penActive = false;
 
-    int minDelayMs = 240/1000;
+
+
+    int minDelayMs = 240 / 1000;
 
 	int penFrameId = 0;
 
 	bool isPenActive = false;
-	UINT touchSizeThreshold = 18;
+	UINT touchSizeThreshold = 15;
+    UINT penDownThreshold = 18;
 
     BOOL simulateTouch = false;
     BOOL simulateHover = true;
