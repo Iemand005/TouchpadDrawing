@@ -163,7 +163,7 @@ public:
                 OutputDebugString(L"Touch went up\n");
             }
 
-            if (touch.id == 0) {
+            if (touch.id == 0 && touch.size < touchSizeThreshold) {
 
                 if (pointerFlags & POINTER_FLAG_UPDATE) {
                     OutputDebugString(to_wstring(duration).c_str());
@@ -262,5 +262,7 @@ private:
     int minDelayMs = 240/1000;
 
 	int penFrameId = 0;
+
+	UINT touchSizeThreshold = 18;
 };
 
